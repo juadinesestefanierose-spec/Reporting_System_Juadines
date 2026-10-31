@@ -1,0 +1,84 @@
+
+.login-page {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  background: #d7ebff;
+}
+
+.login-hero {
+  flex: 1;
+  width: 100%;
+  min-height: calc(100vh - 185px);
+
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 3vw;
+  padding: 4vh 5vw;
+
+  background:
+    linear-gradient(
+      rgba(0, 76, 150, 0.45),
+      rgba(0, 65, 130, 0.55)
+    ),
+    url('../assets/frontpho.png') center / cover no-repeat;
+}
+
+.login-title {
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.login-title h1 {
+  margin: 0;
+  color: #ffdf36;
+  font-size: clamp(38px, 4.5vw, 76px);
+  line-height: 1.25;
+  font-weight: 750;
+  text-align: center;
+  overflow-wrap: break-word;
+}
+
+.login-form-container {
+  width: 90%;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+}
+
+/* Tablet and phone layout */
+@media (max-width: 850px) {
+  .login-hero {
+    min-height: auto;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 30px;
+    padding: 35px 20px;
+  }
+
+  .login-title h1 {
+    font-size: clamp(34px, 7vw, 52px);
+  }
+
+  .login-form-container {
+    max-width: 600px;
+    margin: 0 auto;
+  }
+}
+
+/* Small phones */
+@media (max-width: 480px) {
+  .login-hero {
+    gap: 24px;
+    padding: 28px 14px;
+  }
+
+  .login-title h1 {
+    font-size: clamp(30px, 8vw, 40px);
+  }
+}

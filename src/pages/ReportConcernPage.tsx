@@ -1,0 +1,133 @@
+import { useState } from 'react'
+import { supabase } from '../lib/supabase'
+import './ReportConcernPage.css'
+
+function ReportConcernPage() {
+  const [category, setCategory] = useState('')
+  const [blockSection, setBlockSection] = useState('')
+  const [description, setDescription] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [message, setMessage] = useState('')
+  const [referenceNumber, setReferenceNumber] = useState('')
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setMessage('')
+    setReferenceNumber('')
+    setSubmitting(true)
+
+    try {
+      const { data: userData, error: userError } =
+        await supabase.auth.getUser()
+
+      if (userError || !userData.user) {
+        setMessage('Your session has expired. Please log in again.')
+        return
+      }
+
+      const reference = `CCDI-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 6)
+        .toUpperCase()}`
+
+      const { error } = await supabase
+        .from('concern_reports')
+        .insert({
+          reference_number: reference,
+          user_id: userData.user.id,
+          category,
+          description: description.trim(),
+          block_section: blockSection.trim() || null,
+          status: 'Submitted',
+        })
+
+      if (error) {
+        console.error('Concern submission error:', error)
+        setMessage(`Unable to submit your concern: ${error.message}`)
+        return
+      }
+
+      setReferenceNumber(reference)
+      setMessage('Your concern has been submitted successfully!')
+      setCategory('')
+      setBlockSection('')
+      setDescription('')
+    } catch {
+      setMessage('Something went wrong. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <main className="concern-page">
+      <p className="concern-eyebrow">STUDENT PORTAL</p>
+      <h1>Report a Concern</h1>
+      <p className="concern-subtitle">
+        Tell us what happened. Your concern will be handled appropriately.
+      </p>
+
+      <form className="concern-form" onSubmit={handleSubmit}>
+        <label htmlFor="category">Concern Category</label>
+        <select
+          id="category"
+          value={category}
+          onChange={(event) => setCategory(event.target.value)}
+          required
+        >
+          <option value="" disabled>Select a category</option>
+          <option value="Bullying or Harassment">Bullying or Harassment</option>
+          <option value="Teacher or Staff Concern">Teacher or Staff Concern</option>
+          <option value="Classroom or Academic Concern">
+            Classroom or Academic Concern
+          </option>
+          <option value="Facility or Environmental Concern">
+            Facility or Environmental Concern
+          </option>
+          <option value="Safety Concern">Safety Concern</option>
+          <option value="Other">Other</option>
+        </select>
+
+        <label htmlFor="block">Block / Section (if applicable)</label>
+        <input
+          id="block"
+          value={blockSection}
+          onChange={(event) => setBlockSection(event.target.value)}
+          placeholder="Enter your block or section"
+        />
+
+        <label htmlFor="description">Describe your concern</label>
+        <textarea
+          id="description"
+          value={description}
+          onChange={(event) => setDescription(event.target.value)}
+          rows={6}
+          placeholder="Please explain what happened..."
+          required
+        />
+
+        {message && (
+          <p role="status" aria-live="polite">
+            {message}
+          </p>
+        )}
+
+        {referenceNumber && (
+          <p>
+            Reference Number: <strong>{referenceNumber}</strong>
+          </p>
+        )}
+
+        <button
+          type="submit"
+          className="concern-submit"
+          disabled={submitting}
+        >
+          {submitting ? 'Submitting...' : 'Submit Concern'}
+        </button>
+      </form>
+    </main>
+  )
+}
+
+export default ReportConcernPage

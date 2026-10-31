@@ -1,0 +1,21 @@
+
+.site-footer {
+  width: 100%;
+  min-height: 85px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: #d7ebff;
+  color: #064784;
+  font-size: 15px;
+  text-align: center;
+}
+
+@media (max-width: 600px) {
+  .site-footer {
+    min-height: 65px;
+    padding: 15px 10px;
+    font-size: 12px;
+  }
+}

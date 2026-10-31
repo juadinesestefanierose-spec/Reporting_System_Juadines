@@ -1,0 +1,80 @@
+
+.concern-page {
+  padding: 32px;
+  color: #183653;
+}
+
+.concern-eyebrow {
+  color: #527da5;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+}
+
+.concern-page h1 {
+  margin: 8px 0;
+  font-size: 28px;
+}
+
+.concern-subtitle {
+  color: #6d7f91;
+  margin-bottom: 28px;
+}
+
+.concern-form {
+  max-width: 720px;
+  padding: 28px;
+  background: white;
+  border: 1px solid #e1e9f0;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.concern-form label {
+  font-weight: 600;
+  margin-top: 8px;
+}
+
+.concern-form input,
+.concern-form select,
+.concern-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid #d4dfe9;
+  border-radius: 8px;
+  font: inherit;
+  color: #183653;
+  background: white;
+}
+
+.concern-form textarea {
+  resize: vertical;
+}
+
+.concern-submit {
+  margin-top: 12px;
+  padding: 13px;
+  background: #164778;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.concern-submit:hover {
+  background: #10365b;
+}
+
+@media (max-width: 600px) {
+  .concern-page {
+    padding: 20px 14px;
+  }
+
+  .concern-form {
+    padding: 18px;
+  }
+}
