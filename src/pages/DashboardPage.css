@@ -505,3 +505,164 @@
   font-weight: 700;
   line-height: 1;
 }
+
+/* SIDEBAR HIDE / SHOW */
+.sidebar {
+  flex: 0 0 238px;
+  transition: width 0.25s ease, flex-basis 0.25s ease,
+    min-width 0.25s ease, padding 0.25s ease;
+  overflow: hidden;
+}
+
+.sidebar.sidebar-hidden {
+  width: 0;
+  min-width: 0;
+  flex-basis: 0;
+  padding-left: 0;
+  padding-right: 0;
+  border: 0;
+}
+
+/* HAMBURGER BUTTON */
+.sidebar-toggle {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: white;
+  color: var(--navy);
+  font-size: 19px;
+  cursor: pointer;
+}
+
+.sidebar-toggle:hover {
+  background: #f3f6fb;
+}
+
+/* CLICKABLE PROFILE */
+.user-summary {
+  border: 0;
+  padding: 5px;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.user-summary:hover {
+  background: #f3f6fb;
+}
+
+/* PHONE LAYOUT */
+@media (max-width: 650px) {
+  .sidebar {
+    width: 100%;
+    flex-basis: auto;
+  }
+
+  .sidebar.sidebar-hidden {
+    display: none;
+  }
+
+  .topbar {
+    gap: 10px;
+    padding: 0 10px;
+  }
+
+  .sidebar-toggle {
+    width: 34px;
+    height: 34px;
+  }
+
+  .sound-toggle {
+    margin-right: 0;
+    padding: 7px;
+  }
+
+  .user-summary {
+    gap: 5px;
+  }
+
+  .user-info strong {
+    max-width: 85px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+/* Edit Report Form */
+.edit-report-panel {
+  max-width: 700px;
+  padding: 25px;
+}
+
+.edit-report-panel form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.edit-report-panel label {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.edit-report-panel input,
+.edit-report-panel textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: inherit;
+  color: var(--text);
+  box-sizing: border-box;
+}
+
+.edit-report-panel textarea {
+  resize: vertical;
+}
+
+.edit-report-actions,
+.report-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.edit-report-actions button,
+.report-actions button {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.save-edit-button,
+.edit-report-button {
+  background: #1671df;
+  color: white;
+}
+
+.cancel-edit-button {
+  background: #e8edf4;
+  color: #23364d;
+}
+
+.delete-report-button {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.save-edit-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.no-actions {
+  color: var(--muted);
+}

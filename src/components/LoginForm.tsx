@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import './LoginForm.css'
 
 function LoginForm() {
-  const [email, setEmail] = useState('')
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
@@ -14,21 +14,58 @@ function LoginForm() {
     setMessage('')
     setLoading(true)
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    let userId = ''
+    const isEmail = identifier.trim().includes('@')
 
-    if (error) {
-      setMessage('Login failed. Check your email and password.')
-      setLoading(false)
-      return
+    if (isEmail) {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: identifier.trim(),
+        password,
+      })
+
+      if (error || !data.user) {
+        setMessage('Login failed. Check your email and password.')
+        setLoading(false)
+        return
+      }
+
+      userId = data.user.id
+    } else {
+      const { data, error } = await supabase.functions.invoke(
+        'student-school-login',
+        {
+          body: {
+            school_id: identifier.trim(),
+            password,
+          },
+        }
+      )
+
+      if (error || !data?.access_token || !data?.refresh_token) {
+        setMessage('Login failed. Check your School ID and password.')
+        setLoading(false)
+        return
+      }
+
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.setSession({
+          access_token: data.access_token,
+          refresh_token: data.refresh_token,
+        })
+
+      if (sessionError || !sessionData.user) {
+        setMessage('Unable to complete login. Please try again.')
+        setLoading(false)
+        return
+      }
+
+      userId = sessionData.user.id
     }
 
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('full_name, role, is_approved')
-      .eq('id', data.user.id)
+      .eq('id', userId)
       .maybeSingle()
 
     if (profileError || !profile || !profile.is_approved) {
@@ -38,9 +75,8 @@ function LoginForm() {
       return
     }
 
-   setMessage(`Welcome, ${profile.full_name}! Opening your dashboard...`)
-window.location.href = '/'
-    setLoading(false)
+    setMessage(`Welcome, ${profile.full_name}! Opening your dashboard...`)
+    window.location.href = '/'
   }
 
   return (
@@ -49,13 +85,13 @@ window.location.href = '/'
 
       <form onSubmit={handleLogin}>
         <div className="login-input">
-          <span aria-hidden="true">👨🏻‍⚖️</span>
+          <span aria-hidden="true">🪪</span>
           <input
-            type="email"
-            placeholder="EMAIL"
-            aria-label="Email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            type="text"
+            placeholder="EMAIL OR SCHOOL ID"
+            aria-label="Email or School ID"
+            value={identifier}
+            onChange={(event) => setIdentifier(event.target.value)}
             required
           />
         </div>

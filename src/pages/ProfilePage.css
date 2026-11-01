@@ -1,4 +1,7 @@
+
 .profile-page {
+  width: min(100%, 1000px);
+  margin: 0 auto;
   padding: 32px;
   color: #183653;
 }
@@ -18,19 +21,32 @@
 .profile-subtitle {
   color: #6d7f91;
   margin-bottom: 28px;
+  font-size: 14px;
 }
 
-.profile-card {
-  max-width: 600px;
+.profile-card,
+.password-card {
+  max-width: 700px;
+  margin-bottom: 22px;
   padding: 28px;
   background: white;
   border: 1px solid #e1e9f0;
   border-radius: 14px;
+  box-shadow: 0 4px 14px #18385808;
+}
+
+.profile-heading {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid #e1e9f0;
 }
 
 .profile-avatar {
   width: 64px;
   height: 64px;
+  flex-shrink: 0;
   display: grid;
   place-items: center;
   border-radius: 50%;
@@ -40,35 +56,155 @@
   font-weight: 700;
 }
 
-.profile-card h2 {
-  margin: 16px 0 4px;
+.profile-heading h2 {
+  margin: 0 0 5px;
+  font-size: 19px;
 }
 
 .profile-role {
+  margin: 0;
   color: #6d7f91;
-  margin-bottom: 24px;
+  font-size: 13px;
+}
+
+.profile-section-title {
+  margin: 22px 0 12px;
+}
+
+.profile-section-title h3 {
+  margin: 0 0 6px;
+  color: #183653;
+  font-size: 17px;
+}
+
+.profile-section-title p {
+  margin: 0;
+  color: #6d7f91;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .profile-detail {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 7px;
   padding: 16px 0;
-  border-top: 1px solid #e1e9f0;
+  border-bottom: 1px solid #e1e9f0;
   overflow-wrap: anywhere;
+}
+
+.profile-detail:last-child {
+  border-bottom: 0;
 }
 
 .profile-detail span {
   color: #6d7f91;
+  font-size: 12px;
+}
+
+.profile-detail strong {
+  color: #183653;
+  font-size: 14px;
+}
+
+/* CHANGE PASSWORD */
+.password-card form {
+  display: grid;
+  gap: 16px;
+}
+
+.password-field {
+  display: grid;
+  gap: 8px;
+}
+
+.password-field label {
+  color: #183653;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.password-field input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 1px solid #dce5ed;
+  border-radius: 8px;
+  outline: none;
+  color: #183653;
+  background: white;
+  font-size: 14px;
+}
+
+.password-field input:focus {
+  border-color: #1671df;
+  box-shadow: 0 0 0 3px #1671df18;
+}
+
+.change-password-button {
+  width: fit-content;
+  padding: 12px 20px;
+  border: 0;
+  border-radius: 8px;
+  background: #103b70;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.change-password-button:hover {
+  background: #1671df;
+}
+
+.change-password-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.password-message {
+  margin: 0;
+  padding: 11px 13px;
+  border-radius: 7px;
   font-size: 13px;
 }
 
-@media (max-width: 600px) {
+.password-message.success {
+  background: #e6f7ed;
+  color: #21804b;
+}
+
+.password-message.error {
+  background: #ffebeb;
+  color: #b33c3c;
+}
+
+/* PHONE RESPONSIVENESS */
+@media (max-width: 650px) {
   .profile-page {
-    padding: 20px 14px;
+    padding: 22px 15px;
   }
 
-  .profile-card {
-    padding: 20px;
+  .profile-page h1 {
+    font-size: 23px;
+  }
+
+  .profile-card,
+  .password-card {
+    padding: 19px 16px;
+  }
+
+  .profile-avatar {
+    width: 52px;
+    height: 52px;
+    font-size: 23px;
+  }
+
+  .profile-heading h2 {
+    font-size: 16px;
+  }
+
+  .change-password-button {
+    width: 100%;
   }
 }

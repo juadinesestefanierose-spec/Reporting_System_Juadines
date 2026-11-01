@@ -1,5 +1,6 @@
 import ccdilogo from '../assets/ccdilogo.png'
 import ReportConcernPage from './ReportConcernPage'
+
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import NotificationsPage from './NotificationsPage'
@@ -11,20 +12,24 @@ type ConcernReport = {
   reference_number: string
   category: string
   description: string
+  block_section: string | null
   status: string
   created_at: string
+    deleted_at: string | null
 }
 
 const menuItems = [
   { label: 'Dashboard', icon: '▦' },
   { label: 'Report a Concern', icon: '＋' },
   { label: 'My Reports', icon: '▤' },
+  { label: 'Trash', icon: '🗑' },
   { label: 'Notifications', icon: '♧' },
   { label: 'Profile', icon: '♙' },
 ]
 
 function DashboardPage() {
   const [reports, setReports] = useState<ConcernReport[]>([])
+  const [trashedReports, setTrashedReports] = useState<ConcernReport[]>([])
   const [fullName, setFullName] = useState('Student')
   const [userEmail, setUserEmail] = useState('')
   const [unreadCount, setUnreadCount] = useState(0)
@@ -33,8 +38,13 @@ function DashboardPage() {
   () => localStorage.getItem('ccdi-notification-sound') === 'enabled'
 )
   const [activeMenu, setActiveMenu] = useState('Dashboard')
+  const [sidebarOpen, setSidebarOpen] = useState(true)
 const audioContextRef = useRef<AudioContext | null>(null)
-
+const [editingReport, setEditingReport] = useState<ConcernReport | null>(null)
+const [editCategory, setEditCategory] = useState('')
+const [editDescription, setEditDescription] = useState('')
+const [editBlockSection, setEditBlockSection] = useState('')
+const [savingEdit, setSavingEdit] = useState(false)
 const soundEnabled = () =>
   localStorage.getItem('ccdi-notification-sound') === 'enabled'
 
@@ -121,12 +131,25 @@ async function enableSound() {
 
     if (profile?.full_name) setFullName(profile.full_name)
 
-    const { data, error } = await supabase
-      .from('concern_reports')
-      .select('id, reference_number, category, description, status, created_at')
-      .order('created_at', { ascending: false })
+    
+// Load the student's reports through the secure RPC
+const { data: reportData, error: reportError } =
+  await supabase.rpc('student_list_concerns')
 
-    if (!error && data) setReports(data)
+if (reportError) {
+  console.error('Unable to load student reports:', reportError.message)
+} else {
+ const studentReports =
+  (reportData ?? []) as unknown as ConcernReport[]
+
+  setReports(
+    studentReports.filter(report => report.deleted_at === null)
+  )
+
+  setTrashedReports(
+    studentReports.filter(report => report.deleted_at !== null)
+  )
+}
 
     const { count, error: notificationError } = await supabase
       .from('notifications')
@@ -173,7 +196,104 @@ async function enableSound() {
     supabase.removeChannel(channel)
   }
 }, [])
+async function handleUpdateReport() {
+  if (!editingReport) return
 
+  if (!editCategory.trim() || !editDescription.trim()) {
+    alert('Please complete the category and description.')
+    return
+  }
+
+  setSavingEdit(true)
+
+  const { error } = await supabase
+    .from('concern_reports')
+    .update({
+      category: editCategory.trim(),
+      description: editDescription.trim(),
+      block_section: editBlockSection.trim() || null,
+    })
+    .eq('id', editingReport.id)
+
+  setSavingEdit(false)
+
+  if (error) {
+    alert('Unable to update report: ' + error.message)
+    return
+  }
+
+  setReports((prev) =>
+    prev.map((report) =>
+      report.id === editingReport.id
+        ? {
+            ...report,
+            category: editCategory.trim(),
+            description: editDescription.trim(),
+            block_section: editBlockSection.trim() || null,
+          }
+        : report
+    )
+  )
+
+  setEditingReport(null)
+  alert('Report updated successfully!')
+}
+
+async function handleDeleteReport(report: ConcernReport) {
+  const confirmed = window.confirm(
+    `Move report ${report.reference_number} to Trash?`
+  )
+
+  if (!confirmed) return
+
+  const { error } = await supabase
+    .from('concern_reports')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', report.id)
+
+  if (error) {
+    alert('Unable to delete report: ' + error.message)
+    return
+  }
+
+  setReports((prev) => prev.filter((item) => item.id !== report.id))
+  alert('Report moved to Trash.')
+}
+async function handleRestoreReport(report: ConcernReport) {
+  const confirmed = window.confirm(
+    `Restore report ${report.reference_number}?`
+  )
+
+  if (!confirmed) return
+
+  const { data, error } = await supabase
+  .from('concern_reports')
+  .update({ deleted_at: null })
+  .eq('id', report.id)
+  .select('id')
+  .maybeSingle()
+
+  if (error) {
+  alert('Unable to restore report: ' + error.message)
+  return
+}
+
+if (!data) {
+  alert('Restore was not saved. Supabase may be blocking this update through its Row Level Security policy.')
+  return
+}
+  setTrashedReports((prev) =>
+    prev.filter((item) => item.id !== report.id)
+  )
+
+  setReports((prev) => [report, ...prev].sort(
+    (a, b) =>
+      new Date(b.created_at).getTime() -
+      new Date(a.created_at).getTime()
+  ))
+
+  alert('Report restored successfully!')
+}
   async function handleLogout() {
   const { error } = await supabase.auth.signOut()
 
@@ -190,7 +310,7 @@ async function enableSound() {
 
   return (
     <div className="dashboard-shell">
-      <aside className="sidebar">
+      <aside className={`sidebar ${sidebarOpen ? '' : 'sidebar-hidden'}`}>
         <div className="sidebar-brand">
   <img src={ccdilogo} alt="CCDI Logo" className="sidebar-logo" />
 </div>
@@ -222,6 +342,15 @@ async function enableSound() {
 
       <div className="dashboard-main">
         <header className="topbar">
+          <button
+  type="button"
+  className="sidebar-toggle"
+  onClick={() => setSidebarOpen(prev => !prev)}
+  aria-label={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
+  title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
+>
+  ☰
+</button>
           <div className="mobile-brand">CCDI</div>
          
 <div className="topbar-spacer" />
@@ -299,18 +428,82 @@ aria-label={soundOn ? 'Mute notification sound' : 'Enable notification sound'}
   )}
 </button>
 
-          <div className="user-summary">
+          <button
+  type="button"
+  className="user-summary"
+  onClick={() => setActiveMenu('Profile')}
+  aria-label="Open student profile"
+>
             <div className="avatar">{fullName.charAt(0).toUpperCase()}</div>
             <div className="user-info">
               <strong>{fullName}</strong>
               <span>Student</span>
             </div>
-          </div>
+          </button>
         </header>
 
 
   
-        {activeMenu === 'Report a Concern' ? (
+        {editingReport ? (
+  <main className="dashboard-content">
+    <section className="welcome-heading">
+      <p className="eyebrow">STUDENT PORTAL</p>
+      <h1>Edit Report</h1>
+      <p>Update the details of your pending concern.</p>
+    </section>
+
+    <section className="reports-panel edit-report-panel">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          handleUpdateReport()
+        }}
+      >
+        <label>Category</label>
+        <input
+          type="text"
+          value={editCategory}
+          onChange={(e) => setEditCategory(e.target.value)}
+          required
+        />
+
+        <label>Description</label>
+        <textarea
+          value={editDescription}
+          onChange={(e) => setEditDescription(e.target.value)}
+          rows={5}
+          required
+        />
+
+        <label>Block / Section</label>
+        <input
+          type="text"
+          value={editBlockSection}
+          onChange={(e) => setEditBlockSection(e.target.value)}
+          placeholder="Optional"
+        />
+
+        <div className="edit-report-actions">
+          <button
+            type="button"
+            className="cancel-edit-button"
+            onClick={() => setEditingReport(null)}
+          >
+            Cancel
+          </button>
+
+          <button
+            type="submit"
+            className="save-edit-button"
+            disabled={savingEdit}
+          >
+            {savingEdit ? 'Saving...' : 'Save Changes'}
+          </button>
+        </div>
+      </form>
+    </section>
+  </main>
+) : activeMenu === 'Report a Concern' ? (
   <ReportConcernPage />
   ) : activeMenu === 'Notifications' ? (
   <NotificationsPage /> 
@@ -351,6 +544,7 @@ aria-label={soundOn ? 'Mute notification sound' : 'Enable notification sound'}
                 <th>Category</th>
                 <th>Date Submitted</th>
                 <th>Status</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -369,6 +563,101 @@ aria-label={soundOn ? 'Mute notification sound' : 'Enable notification sound'}
                     >
                       {report.status}
                     </span>
+                  </td>
+                  <td>
+ {['Pending', 'Submitted'].includes(report.status) && (
+
+    <div className="report-actions">
+      <button
+        className="edit-report-button"
+        onClick={() => {
+          setEditingReport(report)
+          setEditCategory(report.category)
+          setEditDescription(report.description)
+          setEditBlockSection(report.block_section ?? '')
+        }}
+      >
+        Edit
+      </button>
+
+      <button
+        className="delete-report-button"
+        onClick={() => handleDeleteReport(report)}
+      >
+        Delete
+      </button>
+    </div>
+  )}
+
+  {!['Pending', 'Submitted'].includes(report.status) && (
+    <span className="no-actions">—</span>
+  )}
+</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+ </main>
+) : activeMenu === 'Trash' ? (
+  <main className="dashboard-content">
+    <section className="welcome-heading">
+      <p className="eyebrow">STUDENT PORTAL</p>
+      <h1>Trash</h1>
+      <p>View and restore reports you have deleted.</p>
+    </section>
+
+    <section className="reports-panel">
+      <div className="panel-heading">
+        <div>
+          <h2>Deleted Reports</h2>
+          <p>{trashedReports.length} report(s) in Trash</p>
+        </div>
+      </div>
+
+      {loading ? (
+        <p className="empty-state">Loading Trash...</p>
+      ) : trashedReports.length === 0 ? (
+        <div className="empty-state">
+          <h3>Trash is empty</h3>
+          <p>Reports you delete will appear here.</p>
+        </div>
+      ) : (
+        <div className="table-wrap">
+          <table className="reports-table">
+            <thead>
+              <tr>
+                <th>Reference No.</th>
+                <th>Category</th>
+                <th>Date Submitted</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {trashedReports.map((report) => (
+                <tr key={report.id}>
+                  <td>{report.reference_number}</td>
+                  <td>{report.category}</td>
+                  <td>
+                    {new Date(report.created_at).toLocaleDateString()}
+                  </td>
+                  <td>{report.status}</td>
+                  <td>
+                    {['Pending', 'Submitted'].includes(report.status) ? (
+  <button
+    className="edit-report-button"
+    onClick={() => handleRestoreReport(report)}
+  >
+    Restore
+  </button>
+) : (
+  <span className="no-actions">
+    Cannot restore
+  </span>
+)}
                   </td>
                 </tr>
               ))}

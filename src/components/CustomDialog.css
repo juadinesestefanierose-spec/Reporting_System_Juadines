@@ -1,0 +1,147 @@
+.custom-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 35, 55, 0.55);
+  backdrop-filter: blur(4px);
+  animation: dialogFadeIn 0.2s ease;
+}
+
+.custom-dialog {
+  width: 100%;
+  max-width: 420px;
+  padding: 32px;
+  border-radius: 20px;
+  background: #ffffff;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+  animation: dialogSlideIn 0.25s ease;
+}
+
+.custom-dialog-icon {
+  width: 62px;
+  height: 62px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  font-size: 30px;
+  font-weight: 700;
+}
+
+.custom-dialog-icon.success {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.custom-dialog-icon.warning {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.custom-dialog-icon.error {
+  background: #fee2e2;
+  color: #b42318;
+}
+
+.custom-dialog-icon.info {
+  background: #dbeafe;
+  color: #164778;
+}
+
+.custom-dialog h2 {
+  margin: 0 0 10px;
+  color: #183653;
+  font-size: 21px;
+}
+
+.custom-dialog p {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.custom-dialog-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 26px;
+}
+
+.custom-dialog-actions button {
+  min-width: 110px;
+  padding: 11px 20px;
+  border: none;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.custom-dialog-cancel {
+  background: #edf2f7;
+  color: #475569;
+}
+
+.custom-dialog-cancel:hover {
+  background: #e2e8f0;
+}
+
+.custom-dialog-confirm {
+  background: #164778;
+  color: white;
+}
+
+.custom-dialog-confirm:hover {
+  background: #10385e;
+}
+
+.custom-dialog-confirm.success {
+  background: #15803d;
+}
+
+.custom-dialog-confirm.warning {
+  background: #b45309;
+}
+
+.custom-dialog-confirm.error {
+  background: #b42318;
+}
+
+@keyframes dialogFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes dialogSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 480px) {
+  .custom-dialog {
+    padding: 26px 20px;
+  }
+
+  .custom-dialog-actions {
+    flex-direction: column-reverse;
+  }
+
+  .custom-dialog-actions button {
+    width: 100%;
+  }
+}

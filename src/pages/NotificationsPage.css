@@ -50,14 +50,6 @@
   transition: background 0.2s ease;
 }
 
-.sound-button {
-  background: #e5eff8;
-  color: #164778;
-}
-
-.sound-button:hover {
-  background: #d5e6f5;
-}
 
 .notification-list {
   display: flex;

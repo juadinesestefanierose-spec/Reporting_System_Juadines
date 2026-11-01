@@ -6,58 +6,117 @@ function ReportConcernPage() {
   const [category, setCategory] = useState('')
   const [blockSection, setBlockSection] = useState('')
   const [description, setDescription] = useState('')
+  const [isAnonymous, setIsAnonymous] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState('')
   const [referenceNumber, setReferenceNumber] = useState('')
+  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null)
+const [photoPreview, setPhotoPreview] = useState('')
 
+function handlePhotoChange(event: React.ChangeEvent<HTMLInputElement>) {
+  const file = event.target.files?.[0]
+
+  if (!file) return
+
+  if (!file.type.startsWith('image/')) {
+    setMessage('Please select a valid image file.')
+    event.target.value = ''
+    return
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    setMessage('Photo must not exceed 5 MB.')
+    event.target.value = ''
+    return
+  }
+
+  setSelectedPhoto(file)
+  setPhotoPreview(URL.createObjectURL(file))
+  setMessage('')
+}
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setMessage('')
-    setReferenceNumber('')
-    setSubmitting(true)
+  event.preventDefault()
+  setMessage('')
+  setReferenceNumber('')
+  setSubmitting(true)
 
-    try {
-      const { data: userData, error: userError } =
-        await supabase.auth.getUser()
+  try {
+    const { data: userData, error: userError } =
+      await supabase.auth.getUser()
 
-      if (userError || !userData.user) {
-        setMessage('Your session has expired. Please log in again.')
-        return
-      }
+    if (userError || !userData.user) {
+      setMessage('Your session has expired. Please log in again.')
+      return
+    }
 
-      const reference = `CCDI-${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2, 6)
-        .toUpperCase()}`
+    const reference = `CCDI-${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2, 6)
+      .toUpperCase()}`
 
-      const { error } = await supabase
-        .from('concern_reports')
-        .insert({
-          reference_number: reference,
-          user_id: userData.user.id,
-          category,
-          description: description.trim(),
-          block_section: blockSection.trim() || null,
-          status: 'Submitted',
+    let photoPath: string | null = null
+
+    // Upload photo if the student selected one
+    if (selectedPhoto) {
+      const extension = selectedPhoto.name
+        .split('.')
+        .pop()
+        ?.toLowerCase()
+        .replace(/[^a-z0-9]/g, '') || 'jpg'
+
+      photoPath = `${userData.user.id}/${reference}.${extension}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('concern-photos')
+        .upload(photoPath, selectedPhoto, {
+          contentType: selectedPhoto.type,
+          upsert: false,
         })
 
-      if (error) {
-        console.error('Concern submission error:', error)
-        setMessage(`Unable to submit your concern: ${error.message}`)
+      if (uploadError) {
+        console.error('Photo upload error:', uploadError)
+        setMessage(`Unable to upload photo: ${uploadError.message}`)
         return
       }
-
-      setReferenceNumber(reference)
-      setMessage('Your concern has been submitted successfully!')
-      setCategory('')
-      setBlockSection('')
-      setDescription('')
-    } catch {
-      setMessage('Something went wrong. Please try again.')
-    } finally {
-      setSubmitting(false)
     }
+
+    const { error } = await supabase
+      .from('concern_reports')
+      .insert({
+        reference_number: reference,
+        user_id: userData.user.id,
+        category,
+        description: description.trim(),
+        block_section: blockSection.trim() || null,
+        status: 'Submitted',
+        is_anonymous: isAnonymous,
+        photo_path: photoPath,
+      })
+
+    if (error) {
+      console.error('Concern submission error:', error)
+      setMessage(`Unable to submit your concern: ${error.message}`)
+      return
+    }
+
+    setReferenceNumber(reference)
+    setMessage('Your concern has been submitted successfully!')
+    setCategory('')
+    setBlockSection('')
+    setDescription('')
+    setIsAnonymous(false)
+    setSelectedPhoto(null)
+
+    if (photoPreview) {
+      URL.revokeObjectURL(photoPreview)
+      setPhotoPreview('')
+    }
+  } catch {
+    setMessage('Something went wrong. Please try again.')
+  } finally {
+    setSubmitting(false)
   }
+}
 
   return (
     <main className="concern-page">
@@ -68,6 +127,37 @@ function ReportConcernPage() {
       </p>
 
       <form className="concern-form" onSubmit={handleSubmit}>
+        <div className="report-identity-section">
+  <label>Reporting Identity</label>
+
+  <div className="report-identity-options">
+    <label className="report-identity-option">
+      <input
+        type="radio"
+        name="reportIdentity"
+        checked={!isAnonymous}
+        onChange={() => setIsAnonymous(false)}
+      />
+      <span>
+        <strong>Identified Report</strong>
+        <small>Guidance can see your identity.</small>
+      </span>
+    </label>
+
+    <label className="report-identity-option">
+      <input
+        type="radio"
+        name="reportIdentity"
+        checked={isAnonymous}
+        onChange={() => setIsAnonymous(true)}
+      />
+      <span>
+        <strong>Anonymous Report</strong>
+        <small>Your identity will be hidden from Guidance.</small>
+      </span>
+    </label>
+  </div>
+</div>
         <label htmlFor="category">Concern Category</label>
         <select
           id="category"
@@ -105,6 +195,43 @@ function ReportConcernPage() {
           placeholder="Please explain what happened..."
           required
         />
+        <div className="concern-photo-section">
+  <label htmlFor="concern-photo">Attach Photo (Optional)</label>
+
+  <input
+    id="concern-photo"
+    type="file"
+    accept="image/*"
+    onChange={handlePhotoChange}
+    disabled={submitting}
+  />
+
+  <small>Upload one photo only. Maximum file size: 5 MB.</small>
+
+  {photoPreview && (
+    <div className="concern-photo-preview">
+      <img src={photoPreview} alt="Selected concern attachment" />
+
+      <button
+        type="button"
+        onClick={() => {
+          URL.revokeObjectURL(photoPreview)
+          setPhotoPreview('')
+          setSelectedPhoto(null)
+
+          const photoInput = document.getElementById(
+            'concern-photo'
+          ) as HTMLInputElement
+
+          if (photoInput) photoInput.value = ''
+        }}
+        disabled={submitting}
+      >
+        Remove Photo
+      </button>
+    </div>
+  )}
+</div>
 
         {message && (
           <p role="status" aria-live="polite">

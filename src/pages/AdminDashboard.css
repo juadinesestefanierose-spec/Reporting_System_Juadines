@@ -753,31 +753,84 @@
   color: #788793;
   font-size: 12px;
 }
-
 .admin-notification-item {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  align-items: flex-start;
+  gap: 14px;
   width: 100%;
-  padding: 14px 16px;
+  padding: 16px;
   text-align: left;
   border: none;
   border-bottom: 1px solid #edf0f2;
   cursor: pointer;
   background: white;
+  font: inherit;
 }
 
 .admin-notification-item.unread {
-  background: #eef6fa;
+  background: #f8fbff;
+  border-left: 4px solid #dc2626;
+}
+
+.admin-notification-item.read {
+  background: white;
 }
 
 .admin-notification-item:hover {
   background: #e4eff5;
 }
 
-.admin-notification-item span {
+.admin-notification-item-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #e5eff8;
+  color: #164778;
+  font-size: 20px;
+}
+
+.admin-notification-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-notification-item-heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.admin-notification-item-heading strong {
+  color: #183653;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.admin-notification-item-content p {
+  margin: 8px 0;
+  color: #52677b;
   font-size: 13px;
-  color: #53636e;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.admin-notification-item-content time {
+  display: block;
+  margin-top: 8px;
+  color: #8493a3;
+  font-size: 11px;
+}
+
+.admin-unread-dot {
+  width: 9px;
+  height: 9px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #dc2626;
 }
 
 .admin-notification-empty {
@@ -798,4 +851,249 @@
     right: 12px;
     width: auto;
   }
+  .admin-notification-item {
+  gap: 10px;
+  padding: 14px;
+}
+
+.admin-notification-item-icon {
+  width: 34px;
+  height: 34px;
+  font-size: 18px;
+}
+
+.admin-notification-item-content p {
+  font-size: 12px;
+}
+}
+
+/* SIDEBAR HIDE / SHOW */
+.admin-sidebar {
+  transition: width 0.25s ease, min-width 0.25s ease,
+    padding 0.25s ease;
+}
+
+.admin-sidebar.admin-sidebar-hidden {
+  width: 0;
+  min-width: 0;
+  padding-left: 0;
+  padding-right: 0;
+  overflow: hidden;
+}
+
+/* SIDEBAR TOGGLE BUTTON */
+.admin-sidebar-toggle {
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--admin-border);
+  border-radius: 9px;
+  background: white;
+  color: var(--admin-navy);
+  cursor: pointer;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.admin-sidebar-toggle:hover {
+  background: #f1f5f9;
+}
+
+/* CLICKABLE PROFILE */
+.admin-user-summary {
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+
+.admin-user-summary:hover {
+  opacity: 0.8;
+}
+
+/* MOBILE SIDEBAR */
+@media (max-width: 650px) {
+  .admin-shell {
+    display: block;
+  }
+
+  .admin-sidebar {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-sidebar.admin-sidebar-hidden {
+    display: none;
+  }
+
+  .admin-sidebar-menu {
+    display: flex;
+    overflow-x: auto;
+  }
+
+  .admin-sidebar-toggle {
+    flex-shrink: 0;
+  }
+
+  .admin-topbar {
+    gap: 10px;
+  }
+}
+/* Guidance Review Remarks */
+.admin-remarks-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 20px 0;
+  width: 100%;
+}
+
+.admin-remarks-field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.admin-remarks-input {
+  width: 100%;
+  min-height: 100px;
+  padding: 12px;
+  border: 1px solid #dbe3ef;
+  border-radius: 10px;
+  background: #f8fafc;
+  font-family: inherit;
+  font-size: 14px;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.admin-remarks-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  background: white;
+}
+
+/* Guidance Review Buttons */
+.admin-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.admin-review-actions button {
+  border: none;
+  border-radius: 8px;
+  padding: 11px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.admin-accept-button {
+  background: #2563eb;
+  color: white;
+}
+
+.admin-accept-button:hover {
+  background: #1d4ed8;
+}
+
+.admin-reject-button {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.admin-reject-button:hover {
+  background: #fecaca;
+}
+
+.admin-resolve-button {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.admin-resolve-button:hover {
+  background: #bbf7d0;
+}
+
+.admin-review-actions button:active {
+  transform: scale(0.98);
+}
+
+@media (max-width: 600px) {
+  .admin-review-actions {
+    flex-direction: column;
+  }
+
+  .admin-review-actions button {
+    width: 100%;
+  }
+}
+/* Guidance Remarks */
+.admin-remarks-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 20px 0;
+  width: 100%;
+}
+
+.admin-remarks-field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.admin-remarks-field textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 12px;
+  border: 1px solid #dbe3ef;
+  border-radius: 10px;
+  background: #f8fafc;
+  font-family: inherit;
+  font-size: 14px;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.admin-remarks-field textarea:focus {
+  outline: none;
+  border-color: #2563eb;
+  background: white;
+}
+
+/* Review Buttons */
+.admin-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.admin-review-actions button {
+  padding: 11px 18px;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-accept-button {
+  background: #2563eb;
+  color: white;
+}
+
+.admin-reject-button {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.admin-resolve-button {
+  background: #dcfce7;
+  color: #15803d;
 }

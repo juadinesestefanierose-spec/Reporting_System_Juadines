@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import ccdilogo from '../assets/ccdilogo.png'
 import './AdminDashboard.css'
+import CustomDialog from '../components/CustomDialog'
 type AdminNotification = {
   id: string
   report_id: string
@@ -13,17 +14,22 @@ type AdminNotification = {
 type Concern = {
   id: string
   reference_number: string
-  user_id: string
   category: string
   description: string
   block_section: string | null
   status: string
   created_at: string
+   deleted_at: string | null
+   previous_status: string | null
+   is_anonymous: boolean
+   student_name: string | null
+   photo_path: string | null
 }
 
 const menuItems = [
   { label: 'Dashboard', icon: '▦' },
   { label: 'Concern Reports', icon: '▤' },
+  { label: 'Trash', icon: '🗑' },
   { label: 'Notifications', icon: '♧' },
   { label: 'Account Settings', icon: '⚙' },
 ]
@@ -44,14 +50,26 @@ const soundEnabled = () =>
   const [loading, setLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState('')
   const [selectedReport, setSelectedReport] = useState<Concern | null>(null)
+  const [photoUrl, setPhotoUrl] = useState('')
+const [photoLoading, setPhotoLoading] = useState(false)
+  const [guidanceRemarks, setGuidanceRemarks] = useState('')
   const [activeMenu, setActiveMenu] = useState('Dashboard')
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const [fullName, setFullName] = useState('Guidance Office')
   const [userEmail, setUserEmail] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [passwordMessage, setPasswordMessage] = useState('')
   const [savingPassword, setSavingPassword] = useState(false)
-
+const [dialog, setDialog] = useState<{
+  title: string
+  message: string
+  type: 'success' | 'warning' | 'error' | 'info'
+  confirmLabel?: string
+  cancelLabel?: string
+  showCancel?: boolean
+  onConfirm: () => void
+} | null>(null)
   async function loadNotifications() {
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -159,43 +177,45 @@ async function markAsRead(notificationId: string) {
 
   setUnreadCount(prev => Math.max(0, prev - 1))
 }
-
 async function openNotification(notification: AdminNotification) {
   await markAsRead(notification.id)
- 
 
   const { data, error } = await supabase
-    .from('concern_reports')
-    .select('*')
-    .eq('id', notification.report_id)
-    .maybeSingle()
+    .rpc('guidance_list_concerns')
 
   if (error || !data) {
     alert('Unable to find this concern report.')
     return
   }
 
-  setSelectedReport(data)
+  const report = (data as unknown as Concern[]).find(
+    item => item.id === notification.report_id
+  )
+
+  if (!report) {
+    alert('Unable to find this concern report.')
+    return
+  }
+
+  setSelectedReport(report)
 }
 
-  async function loadReports() {
-    setLoading(true)
+ async function loadReports() {
+  setLoading(true)
 
-    const { data, error } = await supabase
-      .from('concern_reports')
-      .select('*')
-      .order('created_at', { ascending: false })
+  const { data, error } = await supabase
+    .rpc('guidance_list_concerns')
 
-    if (error) {
-      console.error(error.message)
-      setErrorMessage('Unable to load concern reports.')
-    } else {
-      setReports(data ?? [])
-      setErrorMessage('')
-    }
-
-    setLoading(false)
+  if (error) {
+    console.error(error.message)
+    setErrorMessage('Unable to load concern reports.')
+  } else {
+    setReports((data ?? []) as unknown as Concern[])
+    setErrorMessage('')
   }
+
+  setLoading(false)
+}
 
   async function loadStaffProfile() {
     const { data: userData } = await supabase.auth.getUser()
@@ -216,33 +236,150 @@ async function openNotification(notification: AdminNotification) {
   }
 
   async function updateStatus(reportId: string, newStatus: string) {
-    const { error } = await supabase
-      .from('concern_reports')
-      .update({ status: newStatus })
-      .eq('id', reportId)
+  const { error } = await supabase.rpc('guidance_update_concern_status', {
+    p_report_id: reportId,
+    p_new_status: newStatus,
+    p_remarks: guidanceRemarks.trim() || null,
+  })
 
-    if (error) {
-      console.error(error.message)
-      alert('Unable to update report status.')
+  if (error) {
+    setDialog({
+      title: 'Update Failed',
+      message: error.message,
+      type: 'error',
+      confirmLabel: 'Okay',
+      onConfirm: () => setDialog(null),
+    })
+    return
+  }
+
+  await loadReports()
+  setSelectedReport(null)
+  setGuidanceRemarks('')
+
+  setDialog({
+    title: 'Report Updated',
+    message: 'The report status has been updated successfully.',
+    type: 'success',
+    confirmLabel: 'Okay',
+    onConfirm: () => setDialog(null),
+  })
+}
+
+async function handleRestoreReport(report: Concern) {
+  setDialog({
+    title: 'Restore Report',
+    message: `Are you sure you want to restore report ${report.reference_number}?`,
+    type: 'warning',
+    confirmLabel: 'Restore',
+    cancelLabel: 'Go Back',
+    showCancel: true,
+    onConfirm: async () => {
+      setDialog(null)
+
+      const { error } = await supabase.rpc('guidance_restore_concern', {
+        p_report_id: report.id,
+      })
+
+      if (error) {
+        setDialog({
+          title: 'Restore Failed',
+          message: 'Unable to restore report: ' + error.message,
+          type: 'error',
+          confirmLabel: 'Okay',
+          onConfirm: () => setDialog(null),
+        })
+        return
+      }
+
+      await loadReports()
+      setSelectedReport(null)
+
+      setDialog({
+        title: 'Report Restored',
+        message: 'The report has been restored successfully.',
+        type: 'success',
+        confirmLabel: 'Okay',
+        onConfirm: () => setDialog(null),
+      })
+    },
+  })
+}
+
+async function handleReviewAction(newStatus: string) {
+  if (!selectedReport) return
+
+  if (newStatus === 'Cancelled' && !guidanceRemarks.trim()) {
+    setDialog({
+      title: 'Remarks Required',
+      message: 'Please provide a reason before cancelling this report.',
+      type: 'warning',
+      confirmLabel: 'Okay',
+      onConfirm: () => setDialog(null),
+    })
+    return
+  }
+
+  const reportId = selectedReport.id
+
+  setDialog({
+    title: 'Confirm Status Change',
+    message: `Are you sure you want to change this report to ${newStatus}?`,
+    type: 'warning',
+    confirmLabel: 'Confirm',
+    cancelLabel: 'Go Back',
+    showCancel: true,
+    onConfirm: () => {
+      setDialog(null)
+      void updateStatus(reportId, newStatus)
+    },
+  })
+}
+async function handleLogout() {
+  const { error } = await supabase.auth.signOut()
+
+  if (error) {
+    alert(error.message)
+    return
+  }
+
+  window.location.href = '/login'
+}
+useEffect(() => {
+  let isActive = true
+
+  async function loadConcernPhoto() {
+    setPhotoUrl('')
+
+    if (!selectedReport?.photo_path) {
+      setPhotoLoading(false)
       return
     }
 
-    await loadReports()
-    setSelectedReport(null)
-    alert('Report status updated successfully!')
-  }
+    setPhotoLoading(true)
 
-  async function handleLogout() {
-    const { error } = await supabase.auth.signOut()
+    const { data, error } = await supabase.storage
+      .from('concern-photos')
+      .createSignedUrl(selectedReport.photo_path, 60 * 60)
+
+    if (!isActive) return
 
     if (error) {
-      alert('Unable to log out. Please try again.')
-      return
+      console.error('Unable to load concern photo:', error.message)
+      setPhotoUrl('')
+    } else {
+      setPhotoUrl(data.signedUrl)
     }
 
-    window.location.href = '/'
+    setPhotoLoading(false)
   }
 
+  void loadConcernPhoto()
+
+  return () => {
+    isActive = false
+  }
+}, [selectedReport?.photo_path])
   async function handlePasswordChange(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setPasswordMessage('')
@@ -317,7 +454,9 @@ async function openNotification(notification: AdminNotification) {
 }, [soundOn])
 
   const total = reports.length
-  const pending = reports.filter(r => r.status.toLowerCase() === 'pending').length
+  const pending = reports.filter(r =>
+  ['pending', 'submitted'].includes(r.status.toLowerCase())
+).length
   const inProgress = reports.filter(r => r.status.toLowerCase() === 'in progress').length
   const resolved = reports.filter(r => r.status.toLowerCase() === 'resolved').length
   const cancelled = reports.filter(r => r.status.toLowerCase() === 'cancelled').length
@@ -357,13 +496,26 @@ async function openNotification(notification: AdminNotification) {
                 </td>
                 <td>{new Date(report.created_at).toLocaleDateString()}</td>
                 <td>
-                  <button
-                    className="admin-view-button"
-                    onClick={() => setSelectedReport(report)}
-                  >
-                    View Details
-                  </button>
-                </td>
+  <button
+    className="admin-view-button"
+    onClick={() => setSelectedReport(report)}
+  >
+    View Details
+  </button>
+
+  {(report.status === 'Cancelled' &&
+    ['Pending', 'Submitted', 'In Progress'].includes(report.previous_status || '')) ||
+  (report.deleted_at !== null &&
+    ['Pending', 'Submitted'].includes(report.status)) ? (
+    <button
+      className="admin-view-button"
+      onClick={() => handleRestoreReport(report)}
+      style={{ marginLeft: '8px' }}
+    >
+      Restore
+    </button>
+  ) : null}
+</td>
               </tr>
             ))}
           </tbody>
@@ -374,7 +526,7 @@ async function openNotification(notification: AdminNotification) {
 
   return (
     <div className="admin-shell">
-      <aside className="admin-sidebar">
+      <aside className={`admin-sidebar ${sidebarOpen ? 'sidebar-open' : 'sidebar-hidden'}`}>
         <div className="admin-sidebar-brand">
           <img src={ccdilogo} alt="CCDI Logo" className="admin-sidebar-logo" />
         </div>
@@ -400,8 +552,17 @@ async function openNotification(notification: AdminNotification) {
 
       <div className="admin-main">
        <header className="admin-topbar">
-  <div className="admin-mobile-brand">CCDI</div>
-  <div className="admin-topbar-spacer" />
+  <button
+  className="admin-sidebar-toggle"
+  onClick={() => setSidebarOpen(!sidebarOpen)}
+  title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
+  aria-label={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
+>
+  ☰
+</button>
+
+<div className="admin-mobile-brand">CCDI</div>
+<div className="admin-topbar-spacer" />
 
   {/* Notification sound toggle */}
   <button
@@ -468,16 +629,20 @@ aria-label={soundOn ? 'Mute notification sound' : 'Enable notification sound'}
     )}
   </button>
 
-  {/* Guidance Office profile */}
-  <div className="admin-user-summary">
-    <div className="admin-avatar">
-      {fullName.charAt(0).toUpperCase()}
-    </div>
-    <div className="admin-user-info">
-      <strong>{fullName}</strong>
-      <span>Guidance Office</span>
-    </div>
+  <button
+  className="admin-user-summary admin-profile-button"
+  onClick={() => setActiveMenu('Account Settings')}
+  title="Open Account Settings"
+>
+  <div className="admin-avatar">
+    {fullName.charAt(0).toUpperCase()}
   </div>
+
+  <div className="admin-user-info">
+    <strong>{fullName}</strong>
+    <span>Guidance Office</span>
+  </div>
+</button>
 </header>
 
         <main className="admin-content">
@@ -555,7 +720,36 @@ aria-label={soundOn ? 'Mute notification sound' : 'Enable notification sound'}
               </section>
             </>
           )}
+{activeMenu === 'Trash' && (
+  <>
+    <section className="admin-welcome">
+      <p className="admin-eyebrow">ARCHIVED REPORTS</p>
+      <h1>Trash</h1>
+      <p>Cancelled and deleted student concern reports.</p>
+    </section>
 
+    <section className="admin-panel">
+      <div className="admin-panel-heading">
+        <div>
+          <h2>Cancelled and Deleted Reports</h2>
+          <p>
+            {reports.filter(r =>
+              r.status.toLowerCase() === 'cancelled' ||
+              r.deleted_at !== null
+            ).length} report(s)
+          </p>
+        </div>
+      </div>
+
+      {renderReportTable(
+        reports.filter(r =>
+          r.status.toLowerCase() === 'cancelled' ||
+          r.deleted_at !== null
+        )
+      )}
+    </section>
+  </>
+)}
           {activeMenu === 'Notifications' && (
   <section className="admin-welcome">
     <p className="admin-eyebrow">UPDATES</p>
@@ -580,24 +774,30 @@ aria-label={soundOn ? 'Mute notification sound' : 'Enable notification sound'}
         <div className="admin-notification-list">
           {notifications.map(notification => (
             <button
-              key={notification.id}
-              className={`admin-notification-item ${
-                notification.is_read ? 'read' : 'unread'
-              }`}
-              onClick={() => openNotification(notification)}
-            >
-              <div>
-                <strong>{notification.title}</strong>
-                <p>{notification.message}</p>
-                <span>
-                  {new Date(notification.created_at).toLocaleString()}
-                </span>
-              </div>
+  key={notification.id}
+  className={`admin-notification-item ${
+    notification.is_read ? 'read' : 'unread'
+  }`}
+  onClick={() => openNotification(notification)}
+>
+  <div className="admin-notification-item-icon">♧</div>
 
-              {!notification.is_read && (
-                <span className="admin-unread-dot" />
-              )}
-            </button>
+  <div className="admin-notification-item-content">
+    <div className="admin-notification-item-heading">
+      <strong>{notification.title}</strong>
+
+      {!notification.is_read && (
+        <span className="admin-unread-dot" />
+      )}
+    </div>
+
+    <p>{notification.message}</p>
+
+    <time dateTime={notification.created_at}>
+      {new Date(notification.created_at).toLocaleString()}
+    </time>
+  </div>
+</button>
           ))}
         </div>
       )}
@@ -677,6 +877,21 @@ aria-label={soundOn ? 'Mute notification sound' : 'Enable notification sound'}
           className="admin-modal-overlay"
           onClick={() => setSelectedReport(null)}
         >
+          {selectedReport.photo_path && (
+  <div className="admin-description admin-attachment">
+    <span>Photo Attachment</span>
+
+    {photoLoading ? (
+      <p>Loading photo...</p>
+    ) : photoUrl ? (
+      <a href={photoUrl} target="_blank" rel="noreferrer">
+        <img src={photoUrl} alt="Concern attachment" />
+      </a>
+    ) : (
+      <p>Unable to load photo attachment.</p>
+    )}
+  </div>
+)}
           <div className="admin-modal" onClick={e => e.stopPropagation()}>
             <div className="admin-modal-header">
               <div>
@@ -692,23 +907,77 @@ aria-label={soundOn ? 'Mute notification sound' : 'Enable notification sound'}
             </div>
 
             <div className="admin-modal-content">
+             <div className="admin-detail">
+  <span>Reporting Identity</span>
+  <strong>
+    {selectedReport.is_anonymous
+      ? 'Anonymous Student'
+      : selectedReport.student_name || 'Student name unavailable'}
+  </strong>
+</div>
               <div className="admin-detail">
                 <span>Category</span>
                 <strong>{selectedReport.category}</strong>
               </div>
 
               <div className="admin-detail">
-                <span>Update Status</span>
-                <select
-                  value={selectedReport.status}
-                  onChange={e => updateStatus(selectedReport.id, e.target.value)}
-                >
-                  <option value="Pending">Pending</option>
-                  <option value="In Progress">In Progress</option>
-                  <option value="Resolved">Resolved</option>
-                  <option value="Cancelled">Cancelled</option>
-                </select>
-              </div>
+  <span>Report Status</span>
+  <strong>{selectedReport.status}</strong>
+</div>
+<div className="admin-remarks-field">
+  <label htmlFor="guidanceRemarks">Guidance Remarks</label>
+  <textarea
+    id="guidanceRemarks"
+    className="admin-remarks-input"
+    value={guidanceRemarks}
+    onChange={(e) => setGuidanceRemarks(e.target.value)}
+    placeholder="Explain your review decision or resolution..."
+    rows={4}
+  />
+</div>
+<div className="admin-review-actions">
+  {!selectedReport.deleted_at &&
+  ['Pending', 'Submitted'].includes(selectedReport.status) && (
+    <>
+      <button
+        className="admin-accept-button"
+        onClick={() => handleReviewAction('In Progress')}
+      >
+        Accept & Start Review
+      </button>
+
+      <button
+        className="admin-reject-button"
+        onClick={() => handleReviewAction('Cancelled')}
+      >
+        Reject / Cancel
+      </button>
+    </>
+  )}
+
+ {!selectedReport.deleted_at &&
+  selectedReport.status === 'In Progress' && (
+    <>
+      <button
+        className="admin-resolve-button"
+        onClick={() => handleReviewAction('Resolved')}
+      >
+        Mark as Resolved
+      </button>
+
+      <button
+        className="admin-reject-button"
+        onClick={() => handleReviewAction('Cancelled')}
+      >
+        Cancel Report
+      </button>
+    </>
+  )}
+
+  {['Resolved', 'Cancelled'].includes(selectedReport.status) && (
+    <p>This report has already been closed.</p>
+  )}
+</div>
 
               <div className="admin-detail">
                 <span>Block / Section</span>
@@ -734,7 +1003,14 @@ aria-label={soundOn ? 'Mute notification sound' : 'Enable notification sound'}
             </button>
           </div>
         </div>
+        
       )}
+      {dialog && (
+  <CustomDialog
+    {...dialog}
+    onCancel={() => setDialog(null)}
+  />
+)}
     </div>
   )
 }
