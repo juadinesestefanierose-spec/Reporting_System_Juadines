@@ -14,9 +14,9 @@ function LoginPage() {
           <h1>
             CCDI Student
             <br />
-            Concern
+            Guidance
             <br />
-            Reporting
+            Counseling
             <br />
             System
           </h1>
